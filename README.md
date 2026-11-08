@@ -9,6 +9,8 @@ fills as the hour (or day, or a custom block) passes, with a pip marking now.
 - **Look:** follow the theme accent or pick a preset color; track opacity; line
   thickness 1–8 px; inner or screen edge; circle, triangle, diamond, tick, glow
   or no pip, in three sizes.
+- **Loop sweep:** when a span loops, the marker sweeps back to zero (optionally
+  in a rainbow) instead of jumping.
 - **Top bar height:** set it from the same panel (writes `[bar] size-horizontal`
   to `~/.config/omarchy/shell.toml`).
 - **Bar icon:** a ring showing progress. Click for settings, right-click to toggle

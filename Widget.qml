@@ -51,6 +51,72 @@ Panel {
     onTriggered: root.nowMs = Date.now()
   }
 
+  // ------------------------------------------------------------- loop wrap
+  // What the line and ring draw. It follows span.fraction tick by tick, but
+  // when the fraction falls back (a loop or reset) it sweeps back to the new
+  // value instead of jumping, optionally in a rainbow.
+  property real shownFraction: 0
+  property real rainbowPhase: 0
+  property real rainbowLevel: 0
+  property string lastCfgKey: ""
+
+  onSpanChanged: {
+    var key = JSON.stringify(cfg)
+    var f = span.fraction
+    if (wrapAnim.running) {
+      wrapAnim.toValue = f
+    } else if (key === lastCfgKey && cfg.loopAnimation && f < shownFraction - 0.02) {
+      startWrap(shownFraction, f)
+    } else {
+      shownFraction = f
+    }
+    lastCfgKey = key
+  }
+
+  function startWrap(from, to) {
+    wrapAnim.stop()
+    wrapAnim.fromValue = from
+    wrapAnim.toValue = to
+    wrapAnim.start()
+  }
+
+  function previewWrap() { startWrap(1, span.fraction) }
+
+  SequentialAnimation {
+    id: wrapAnim
+    property real fromValue: 1
+    property real toValue: 0
+    readonly property int sweep: Style.duration(1400)
+
+    ParallelAnimation {
+      NumberAnimation {
+        target: root; property: "shownFraction"
+        from: wrapAnim.fromValue; to: wrapAnim.toValue
+        duration: wrapAnim.sweep
+        easing.type: Easing.OutCubic
+      }
+      // Constant hue scroll, so linear.
+      NumberAnimation {
+        target: root; property: "rainbowPhase"
+        from: 0; to: 2
+        duration: wrapAnim.sweep
+      }
+      NumberAnimation {
+        target: root; property: "rainbowLevel"
+        to: root.cfg.rainbow ? 1 : 0
+        duration: Style.duration(160)
+        easing.type: Easing.OutCubic
+      }
+    }
+    NumberAnimation {
+      target: root; property: "rainbowLevel"
+      to: 0
+      duration: Style.duration(320)
+      easing.type: Easing.OutCubic
+    }
+    onFinished: root.shownFraction = root.span.fraction
+  }
+
   function formatTime(ms) {
     return new Date(ms).toLocaleTimeString(Qt.locale(Commons.I18n.formatLocale), Locale.ShortFormat)
   }
@@ -103,7 +169,9 @@ Panel {
     width: parent ? parent.width : 0
     height: parent ? parent.height : 0
     shown: root.lineVisible
-    fraction: root.span.fraction
+    fraction: root.shownFraction
+    rainbowLevel: root.rainbowLevel
+    rainbowPhase: root.rainbowPhase
     fillColor: root.lineColor
     trackOpacity: root.cfg.trackOpacity
     lineHeight: root.cfg.lineHeight
@@ -185,7 +253,7 @@ Panel {
               centerX: ring.size / 2; centerY: ring.size / 2
               radiusX: ring.r; radiusY: ring.r
               startAngle: -90
-              sweepAngle: 360 * root.span.fraction
+              sweepAngle: 360 * root.shownFraction
             }
           }
         }
@@ -239,6 +307,7 @@ Panel {
     target: "washburnello.omaprogress.ctl"
 
     function toggleLine(): string { root.persistSettings({ enabled: !root.cfg.enabled }); return "ok" }
+    function previewLoop(): string { root.previewWrap(); return "ok" }
     // 0 goes back to the theme default.
     function barHeight(value: int): string { root.setBarHeight(value > 0 ? value : null); return "ok" }
     function status(): string {

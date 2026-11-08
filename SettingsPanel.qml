@@ -284,6 +284,69 @@ Column {
 
   PanelSeparator { width: parent.width; foreground: panelRoot.fg }
 
+  // ---------------------------------------------------------- loop
+  Item {
+    width: parent.width
+    height: Math.max(loopHeader.implicitHeight, previewButton.implicitHeight)
+
+    Header {
+      id: loopHeader
+      anchors.left: parent.left
+      anchors.verticalCenter: parent.verticalCenter
+      text: panelRoot.t("section.loop")
+    }
+
+    Button {
+      id: previewButton
+      anchors.right: parent.right
+      anchors.verticalCenter: parent.verticalCenter
+      text: panelRoot.t("loop.preview")
+      bordered: true
+      foreground: panelRoot.fg
+      fontFamily: panelRoot.ff
+      onClicked: if (controller) controller.previewWrap()
+    }
+  }
+
+  component SwitchRow: Item {
+    id: switchRow
+    property string label: ""
+    property bool checked: false
+    signal toggled()
+    width: parent.width
+    height: Math.max(rowLabel.implicitHeight, rowSwitch.implicitHeight)
+
+    Label {
+      id: rowLabel
+      anchors.left: parent.left
+      anchors.verticalCenter: parent.verticalCenter
+      text: switchRow.label
+    }
+
+    ToggleSwitch {
+      id: rowSwitch
+      anchors.right: parent.right
+      anchors.verticalCenter: parent.verticalCenter
+      checked: switchRow.checked
+      accent: controller ? controller.lineColor : Commons.Color.accent
+      onToggled: switchRow.toggled()
+    }
+  }
+
+  SwitchRow {
+    label: panelRoot.t("loop.animate")
+    checked: panelRoot.cfg.loopAnimation
+    onToggled: panelRoot.set({ loopAnimation: !panelRoot.cfg.loopAnimation })
+  }
+
+  SwitchRow {
+    label: panelRoot.t("loop.rainbow")
+    checked: panelRoot.cfg.rainbow
+    onToggled: panelRoot.set({ rainbow: !panelRoot.cfg.rainbow })
+  }
+
+  PanelSeparator { width: parent.width; foreground: panelRoot.fg }
+
   // ---------------------------------------------------------- top bar
   Header { text: panelRoot.t("section.bar") }
 

@@ -30,7 +30,9 @@ var DEFAULTS = {
   lineHeight: 2,
   edge: "inner",
   pipStyle: "circle",
-  pipSize: "medium"
+  pipSize: "medium",
+  loopAnimation: true,
+  rainbow: false
 }
 
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)) }
@@ -79,7 +81,9 @@ function normalize(raw) {
     edge: oneOf(s.edge, EDGES, DEFAULTS.edge),
     lineHeight: Math.round(clamp(Number(s.lineHeight) || DEFAULTS.lineHeight, 1, 8)),
     pipStyle: oneOf(s.pipStyle, PIP_STYLES, DEFAULTS.pipStyle),
-    pipSize: PIP_SIZES.hasOwnProperty(s.pipSize) ? s.pipSize : DEFAULTS.pipSize
+    pipSize: PIP_SIZES.hasOwnProperty(s.pipSize) ? s.pipSize : DEFAULTS.pipSize,
+    loopAnimation: s.loopAnimation !== false,
+    rainbow: s.rainbow === true
   }
 }
 

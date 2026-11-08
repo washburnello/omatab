@@ -88,7 +88,9 @@ Inline on the widget's `shell.json` layout entry, written through
   "edge": "inner",
   "lineHeight": 2,
   "pipStyle": "circle",
-  "pipSize": "medium"
+  "pipSize": "medium",
+  "loopAnimation": true,
+  "rainbow": false
 }
 ```
 
@@ -98,6 +100,19 @@ Inline on the widget's `shell.json` layout entry, written through
 - **lineHeight:** 1–8 px.
 - **pipStyle:** `circle`, `triangle` (apex on the line, hanging away from the
   screen edge), `diamond`, `tick`, `glow`, `none`. **pipSize:** small / medium / large.
+
+### Loop sweep
+When the fraction falls back with the settings unchanged (a loop, a hold reset,
+or waking from suspend in a later cycle), the line and ring don't jump. They
+sweep back to the new value over `Style.duration(1400)` with an ease-out curve,
+so the wrap reads as a loop.
+
+- `loopAnimation` (default on) turns the sweep on or off.
+- `rainbow` (default off) fades in a scrolling rainbow gradient on the fill and a
+  hue-cycling pip during the sweep, then fades it back out over 320 ms.
+- **Preview** in the panel (or `.ctl previewLoop`) plays the sweep from full.
+- The line and ring draw `shownFraction`, not `span.fraction` directly.
+- With animations turned off (`omarchy toggle animations`) the sweep is instant.
 
 ### Top bar height
 The bar's own height is the `[bar] size-horizontal` token. The plugin writes it
@@ -120,12 +135,13 @@ drawn height scales with `[font] base-size`.
   turns the line on or off.
 - **Panel sections:** title with enable switch; current range and time left;
   Time span; Color (swatches and track slider); Line (edge, thickness); Marker;
-  Top bar (height slider and reset).
+  Loop (sweep, rainbow, preview); Top bar (height slider and reset).
 
 ### IPC
 - `omarchy-shell washburnello.omaprogress open|close|toggle`: the panel.
 - `omarchy-shell washburnello.omaprogress.ctl status`: JSON diagnostics.
 - `... .ctl toggleLine`: turns the line on or off.
+- `... .ctl previewLoop`: plays the loop sweep.
 - `... .ctl barHeight <n>`: sets the bar height (`0` = theme default).
 
 ## Shell conventions followed

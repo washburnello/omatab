@@ -23,6 +23,18 @@ Item {
   // Which way the triangle hangs: into the bar for the screen edge, out of
   // it for the inner edge.
   property bool hangDown: true
+  // Rainbow sweep during a loop wrap: level fades it in and out, phase
+  // scrolls the hues.
+  property real rainbowLevel: 0
+  property real rainbowPhase: 0
+
+  function hue(offset) {
+    var h = (offset + rainbowPhase) % 1
+    return Qt.hsla(h < 0 ? h + 1 : h, 0.85, 0.62, 1)
+  }
+  readonly property color pipColor: rainbowLevel > 0
+    ? Qt.tint(fillColor, Qt.hsla(((rainbowPhase % 1) + 1) % 1, 0.85, 0.62, rainbowLevel))
+    : fillColor
 
   enabled: false
   z: 10000
@@ -52,6 +64,25 @@ Item {
     color: root.fillColor
   }
 
+  Rectangle {
+    visible: root.rainbowLevel > 0
+    opacity: root.rainbowLevel
+    x: 0
+    y: root.lineY
+    width: root.headX
+    height: root.lineHeight
+    gradient: Gradient {
+      orientation: Gradient.Horizontal
+      GradientStop { position: 0.0; color: root.hue(0.0) }
+      GradientStop { position: 0.1667; color: root.hue(0.1667) }
+      GradientStop { position: 0.3333; color: root.hue(0.3333) }
+      GradientStop { position: 0.5; color: root.hue(0.5) }
+      GradientStop { position: 0.6667; color: root.hue(0.6667) }
+      GradientStop { position: 0.8333; color: root.hue(0.8333) }
+      GradientStop { position: 1.0; color: root.hue(1.0) }
+    }
+  }
+
   Item {
     id: pip
     readonly property real size: Math.max(root.pipSize, root.lineHeight + 4)
@@ -65,7 +96,7 @@ Item {
       visible: root.pipStyle === "circle"
       anchors.fill: parent
       radius: width / 2
-      color: root.fillColor
+      color: root.pipColor
     }
 
     Rectangle {
@@ -75,7 +106,7 @@ Item {
       height: width
       rotation: 45
       antialiasing: true
-      color: root.fillColor
+      color: root.pipColor
     }
 
     Rectangle {
@@ -84,7 +115,7 @@ Item {
       width: Math.max(2, Math.round(root.lineHeight))
       height: parent.height + 2
       radius: width / 2
-      color: root.fillColor
+      color: root.pipColor
     }
 
     // Apex on the line.
@@ -98,7 +129,7 @@ Item {
       ShapePath {
         strokeWidth: 0
         strokeColor: "transparent"
-        fillColor: root.fillColor
+        fillColor: root.pipColor
         startX: pip.width / 2; startY: root.hangDown ? 0 : pip.height
         PathLine { x: pip.width; y: root.hangDown ? pip.height : 0 }
         PathLine { x: 0; y: root.hangDown ? pip.height : 0 }
@@ -118,9 +149,9 @@ Item {
           centerX: pip.width * 1.1; centerY: pip.width * 1.1
           centerRadius: pip.width * 1.1
           focalX: centerX; focalY: centerY
-          GradientStop { position: 0.0; color: root.fillColor }
-          GradientStop { position: 0.25; color: Qt.rgba(root.fillColor.r, root.fillColor.g, root.fillColor.b, 0.8) }
-          GradientStop { position: 1.0; color: Qt.rgba(root.fillColor.r, root.fillColor.g, root.fillColor.b, 0) }
+          GradientStop { position: 0.0; color: root.pipColor }
+          GradientStop { position: 0.25; color: Qt.rgba(root.pipColor.r, root.pipColor.g, root.pipColor.b, 0.8) }
+          GradientStop { position: 1.0; color: Qt.rgba(root.pipColor.r, root.pipColor.g, root.pipColor.b, 0) }
         }
         PathAngleArc {
           centerX: pip.width * 1.1; centerY: pip.width * 1.1
