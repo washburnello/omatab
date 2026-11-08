@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Particles
 import QtQuick.Shapes
 import qs.Commons
 
@@ -33,6 +34,8 @@ Item {
   // scrolls the hues.
   property real rainbowLevel: 0
   property real rainbowPhase: 0
+  // Sparks rain from the head while true (the loop sweep).
+  property bool sparking: false
 
   function hue(offset) {
     var h = (offset + rainbowPhase) % 1
@@ -183,5 +186,52 @@ Item {
         }
       }
     }
+  }
+
+  // Sparks fall away from the screen edge, across the bar, under gravity.
+  // The system only runs while emitting or while sparks are still alive.
+  readonly property real fallAngle: vertical ? (hang > 0 ? 0 : 180) : (hang > 0 ? 90 : 270)
+
+  ParticleSystem {
+    id: sparkSystem
+    anchors.fill: parent
+    running: root.sparking || !empty
+  }
+
+  ImageParticle {
+    system: sparkSystem
+    source: "qrc:///particleresources/glowdot.png"
+    color: root.pipColor
+    colorVariation: root.rainbowLevel > 0 ? 0.45 : 0.08
+    alpha: 1
+    entryEffect: ImageParticle.None
+  }
+
+  Emitter {
+    system: sparkSystem
+    enabled: root.sparking
+    x: (root.vertical ? root.lineMid : root.headAlong) - 2
+    y: (root.vertical ? root.headAlong : root.lineMid) - 2
+    width: 4
+    height: 4
+    emitRate: 240
+    lifeSpan: 1000
+    lifeSpanVariation: 350
+    size: 11
+    sizeVariation: 4
+    endSize: 3
+    velocity: AngleDirection {
+      angle: root.fallAngle
+      angleVariation: 35
+      magnitude: 110
+      magnitudeVariation: 70
+    }
+  }
+
+  Gravity {
+    system: sparkSystem
+    anchors.fill: parent
+    angle: root.fallAngle
+    magnitude: 420
   }
 }

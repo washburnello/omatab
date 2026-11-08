@@ -36,7 +36,8 @@ var DEFAULTS = {
   pipStyle: "circle",
   pipSize: "medium",
   loopAnimation: true,
-  rainbow: false
+  rainbow: false,
+  sparks: false
 }
 
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)) }
@@ -48,6 +49,45 @@ function oneOf(value, allowed, fallback) {
 function colorIds() {
   var out = []
   for (var i = 0; i < COLORS.length; i++) out.push(COLORS[i].id)
+  return out
+}
+
+// Settings keys per panel group, for its reset button.
+var GROUPS = {
+  span: ["mode", "startTime", "durationMin", "endBehavior"],
+  color: ["color", "trackOpacity"],
+  direction: ["directionH", "directionV"],
+  edge: ["edge", "lineHeight"],
+  marker: ["pipStyle", "pipSize"],
+  loop: ["loopAnimation", "rainbow", "sparks"]
+}
+
+function groupIsDefault(cfg, group) {
+  var keys = GROUPS[group] || []
+  for (var i = 0; i < keys.length; i++) if (cfg[keys[i]] !== DEFAULTS[keys[i]]) return false
+  return true
+}
+
+// A preset id, or "theme:<key>" naming any colour in the theme's colors.toml.
+function validColor(id) {
+  var s = String(id || "")
+  if (/^theme:[A-Za-z0-9_-]{1,40}$/.test(s)) return s
+  return oneOf(s, colorIds(), DEFAULTS.color)
+}
+
+// Every "key = \"#rrggbb\"" in a colors.toml, in file order, first of each hex.
+function parseThemeColors(text) {
+  var out = []
+  var seen = {}
+  var lines = String(text || "").split("\n")
+  for (var i = 0; i < lines.length && out.length < 48; i++) {
+    var m = lines[i].match(/^\s*([A-Za-z0-9_-]{1,40})\s*=\s*["'](#[0-9a-fA-F]{6})["']/)
+    if (!m) continue
+    var hex = m[2].toLowerCase()
+    if (seen[hex]) continue
+    seen[hex] = true
+    out.push({ key: m[1], value: hex })
+  }
   return out
 }
 
@@ -80,7 +120,7 @@ function normalize(raw) {
     startTime: start < 0 ? DEFAULTS.startTime : formatClock(start),
     durationMin: Math.round(clamp(Number(s.durationMin) || DEFAULTS.durationMin, 1, 1440)),
     endBehavior: oneOf(s.endBehavior, END_BEHAVIORS, DEFAULTS.endBehavior),
-    color: oneOf(s.color, colorIds(), DEFAULTS.color),
+    color: validColor(s.color),
     trackOpacity: clamp(isFinite(Number(s.trackOpacity)) && s.trackOpacity !== null ? Number(s.trackOpacity) : DEFAULTS.trackOpacity, 0, 1),
     edge: oneOf(s.edge, EDGES, DEFAULTS.edge),
     directionH: oneOf(s.directionH, DIRECTIONS_H, DEFAULTS.directionH),
@@ -89,7 +129,8 @@ function normalize(raw) {
     pipStyle: oneOf(s.pipStyle, PIP_STYLES, DEFAULTS.pipStyle),
     pipSize: PIP_SIZES.hasOwnProperty(s.pipSize) ? s.pipSize : DEFAULTS.pipSize,
     loopAnimation: s.loopAnimation !== false,
-    rainbow: s.rainbow === true
+    rainbow: s.rainbow === true,
+    sparks: s.sparks === true
   }
 }
 

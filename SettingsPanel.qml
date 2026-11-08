@@ -5,8 +5,8 @@ import qs.Ui
 import "TimeModel.js" as TimeModel
 
 // Every control writes straight through controller.persistSettings(), which
-// lands in shell.json and hot-reloads; the top-bar height goes to the user
-// shell.toml instead.
+// lands in shell.json and hot-reloads; the bar size goes to the user
+// shell.toml instead. Each group's header carries a reset-to-defaults icon.
 Column {
   id: panelRoot
 
@@ -15,10 +15,14 @@ Column {
 
   readonly property var cfg: controller ? controller.cfg : TimeModel.DEFAULTS
   readonly property color fg: controller ? controller.barForeground : Commons.Color.foreground
+  readonly property color accentColor: controller ? controller.lineColor : Commons.Color.accent
   readonly property string ff: Style.font.family
+  readonly property bool vertical: controller ? controller.barVertical : false
 
   function t(key) { return strings ? strings.t(key) : key }
   function set(values) { if (controller) controller.persistSettings(values) }
+  function reset(group) { if (controller) controller.resetGroup(group) }
+  function isDefault(group) { return TimeModel.groupIsDefault(cfg, group) }
 
   spacing: Style.space(10)
 
@@ -30,9 +34,108 @@ Column {
     verticalAlignment: Text.AlignVCenter
   }
 
-  component Header: PanelSectionHeader {
-    foreground: panelRoot.fg
-    fontFamily: panelRoot.ff
+  // Group title with an icon-only reset button, dimmed when the group is
+  // already at its defaults. Extra controls (Preview) go in `trailing`.
+  component GroupHeader: Item {
+    id: gh
+    property string text: ""
+    property bool atDefault: true
+    property alias trailing: trailingRow.data
+    signal resetRequested()
+    width: parent.width
+    height: Math.max(ghText.implicitHeight, resetIcon.height, trailingRow.height)
+
+    PanelSectionHeader {
+      id: ghText
+      anchors.left: parent.left
+      anchors.verticalCenter: parent.verticalCenter
+      text: gh.text
+      foreground: panelRoot.fg
+      fontFamily: panelRoot.ff
+    }
+
+    Row {
+      anchors.right: parent.right
+      anchors.verticalCenter: parent.verticalCenter
+      spacing: Style.space(6)
+
+      Row {
+        id: trailingRow
+        anchors.verticalCenter: parent.verticalCenter
+        spacing: Style.space(6)
+      }
+
+      PanelActionButton {
+        id: resetIcon
+        anchors.verticalCenter: parent.verticalCenter
+        iconText: ""
+        fontSize: Style.font.body
+        foreground: panelRoot.fg
+        fontFamily: panelRoot.ff
+        tooltipText: panelRoot.t("reset")
+        opacity: gh.atDefault ? 0.3 : 1
+        enabled: !gh.atDefault
+        onClicked: gh.resetRequested()
+      }
+    }
+  }
+
+  // PanelSlider plus a small pip under the track marking the default value.
+  component DefaultSlider: Item {
+    id: ds
+    property real value: 0
+    property real minimum: 0
+    property real maximum: 1
+    property real step: 0.05
+    property bool integer: false
+    property int tickCount: 0
+    property real defaultValue: 0
+    signal released(real value)
+    width: parent.width
+    height: slider.implicitHeight + Style.space(6)
+
+    PanelSlider {
+      id: slider
+      anchors.left: parent.left
+      anchors.right: parent.right
+      anchors.top: parent.top
+      bar: controller ? controller.bar : null
+      value: ds.value
+      minimum: ds.minimum; maximum: ds.maximum; step: ds.step
+      integer: ds.integer
+      tickCount: ds.tickCount
+      onReleased: function(v) { ds.released(v) }
+    }
+
+    Rectangle {
+      readonly property real fraction: Math.max(0, Math.min(1, (ds.defaultValue - ds.minimum) / Math.max(0.0001, ds.maximum - ds.minimum)))
+      width: Style.space(6)
+      height: width
+      radius: width / 2
+      color: panelRoot.accentColor
+      x: slider.trackX(fraction) - width / 2
+      y: slider.height / 2 + slider.trackHeight / 2 + Style.space(3)
+    }
+  }
+
+  component Swatch: Rectangle {
+    id: swatch
+    required property var modelData
+    readonly property bool selected: panelRoot.cfg.color === modelData.id
+    width: swatches.size
+    height: width
+    radius: width / 2
+    color: modelData.value
+    border.width: selected ? 2 : (swatchHover.hovered ? 1 : 0)
+    border.color: panelRoot.fg
+
+    HoverHandler { id: swatchHover; cursorShape: Qt.PointingHandCursor }
+    TapHandler { onTapped: panelRoot.set({ color: swatch.modelData.id }) }
+
+    PanelToolTip {
+      visible: swatchHover.hovered
+      text: swatch.modelData.label
+    }
   }
 
   // ---------------------------------------------------------- title + switch
@@ -54,7 +157,7 @@ Column {
       anchors.right: parent.right
       anchors.verticalCenter: parent.verticalCenter
       checked: panelRoot.cfg.enabled
-      accent: controller ? controller.lineColor : Commons.Color.accent
+      accent: panelRoot.accentColor
       onToggled: panelRoot.set({ enabled: !panelRoot.cfg.enabled })
     }
   }
@@ -63,14 +166,18 @@ Column {
     width: parent.width
     opacity: 0.7
     font.pixelSize: Style.font.caption
-    text: controller ? strings.t("span.range").arg(controller.formatTime(controller.span.start)).arg(controller.formatTime(controller.span.end))
+    text: controller && strings ? strings.t("span.range").arg(controller.formatTime(controller.span.start)).arg(controller.formatTime(controller.span.end))
       + "  ·  " + controller.remainingText(controller.span.remainingMs) : ""
   }
 
   PanelSeparator { width: parent.width; foreground: panelRoot.fg }
 
   // ---------------------------------------------------------- span
-  Header { text: panelRoot.t("section.span") }
+  GroupHeader {
+    text: panelRoot.t("section.span")
+    atDefault: panelRoot.isDefault("span")
+    onResetRequested: panelRoot.reset("span")
+  }
 
   ButtonGroup {
     foreground: panelRoot.fg
@@ -85,6 +192,7 @@ Column {
   }
 
   Column {
+    id: customColumn
     width: parent.width
     spacing: Style.space(8)
     visible: panelRoot.cfg.mode === "custom"
@@ -100,25 +208,24 @@ Column {
         id: startHour
         label: panelRoot.t("custom.hour")
         from: 0; to: 23
-        value: Math.floor(parent.parent.startMin / 60)
+        value: Math.floor(customColumn.startMin / 60)
         foreground: panelRoot.fg
         fontFamily: panelRoot.ff
         onModified: function(v) {
-          panelRoot.set({ startTime: TimeModel.formatClock(v * 60 + parent.parent.startMin % 60) })
+          panelRoot.set({ startTime: TimeModel.formatClock(v * 60 + customColumn.startMin % 60) })
         }
       }
 
       NumberField {
         label: panelRoot.t("custom.minute")
         from: 0; to: 59; stepSize: 5
-        value: parent.parent.startMin % 60
+        value: customColumn.startMin % 60
         foreground: panelRoot.fg
         fontFamily: panelRoot.ff
         onModified: function(v) {
-          panelRoot.set({ startTime: TimeModel.formatClock(Math.floor(parent.parent.startMin / 60) * 60 + v) })
+          panelRoot.set({ startTime: TimeModel.formatClock(Math.floor(customColumn.startMin / 60) * 60 + v) })
         }
       }
-
     }
 
     NumberField {
@@ -165,66 +272,93 @@ Column {
   PanelSeparator { width: parent.width; foreground: panelRoot.fg }
 
   // ---------------------------------------------------------- color
-  Header { text: panelRoot.t("section.color") }
+  GroupHeader {
+    text: panelRoot.t("section.color")
+    atDefault: panelRoot.isDefault("color")
+    onResetRequested: panelRoot.reset("color")
+  }
 
-  Flow {
+  // Row 1: the theme's whole palette (accent first, as "theme", so it keeps
+  // following the accent). Row 2: the fixed presets. Both rows share one
+  // swatch size, sized so the longer row fits on a single line.
+  Item {
+    id: swatches
     width: parent.width
-    spacing: Style.space(8)
+    height: themeRow.height + Style.space(6) + presetRow.height
 
-    Repeater {
-      model: TimeModel.COLORS
-
-      Rectangle {
-        id: swatch
-        required property var modelData
-        readonly property bool selected: panelRoot.cfg.color === modelData.id
-        readonly property color swatchColor: modelData.value ? modelData.value : Commons.Color.accent
-
-        width: Style.space(26)
-        height: width
-        radius: width / 2
-        color: swatchColor
-        border.width: selected ? 2 : (swatchHover.hovered ? 1 : 0)
-        border.color: panelRoot.fg
-
-        // The theme swatch is marked so it reads as "follow the theme", not as
-        // whatever colour the current accent happens to be.
-        Text {
-          visible: swatch.modelData.id === "theme"
-          anchors.centerIn: parent
-          textFormat: Text.PlainText
-          text: "T"
-          font.family: panelRoot.ff
-          font.pixelSize: Style.font.caption
-          font.bold: true
-          color: (0.299 * swatch.swatchColor.r + 0.587 * swatch.swatchColor.g + 0.114 * swatch.swatchColor.b) > 0.55 ? "#1a1b20" : "#f2f3f5"
-        }
-
-        HoverHandler { id: swatchHover; cursorShape: Qt.PointingHandCursor }
-        TapHandler { onTapped: panelRoot.set({ color: swatch.modelData.id }) }
-
-        PanelToolTip {
-          visible: swatchHover.hovered
-          text: panelRoot.t("color." + swatch.modelData.id)
-        }
+    readonly property var themeModel: {
+      var out = [{ id: "theme", value: Commons.Color.accent, label: "accent" }]
+      var list = controller ? controller.themeColors : []
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].key === "accent") continue
+        out.push({ id: "theme:" + list[i].key, value: list[i].value, label: list[i].key.replace(/_/g, " ") })
       }
+      return out
+    }
+    readonly property var presetModel: {
+      var out = []
+      for (var i = 0; i < TimeModel.COLORS.length; i++)
+        if (TimeModel.COLORS[i].value) out.push({ id: TimeModel.COLORS[i].id, value: TimeModel.COLORS[i].value, label: panelRoot.t("color." + TimeModel.COLORS[i].id) })
+      return out
+    }
+    readonly property real gap: Style.space(3)
+    readonly property real size: {
+      var n = Math.max(themeModel.length, presetModel.length, 1)
+      return Math.max(10, Math.min(Style.space(26), Math.floor((width - gap * (n - 1)) / n)))
+    }
+
+    Row {
+      id: themeRow
+      spacing: swatches.gap
+      Repeater { model: swatches.themeModel; Swatch { } }
+    }
+
+    Row {
+      id: presetRow
+      y: themeRow.height + Style.space(6)
+      spacing: swatches.gap
+      Repeater { model: swatches.presetModel; Swatch { } }
     }
   }
 
   Label { text: strings ? strings.t("line.track").arg(Commons.I18n.formatNumber(Math.round(panelRoot.cfg.trackOpacity * 100))) : "" }
 
-  PanelSlider {
-    width: parent.width
-    bar: controller ? controller.bar : null
+  DefaultSlider {
     minimum: 0; maximum: 1; step: 0.05
     value: panelRoot.cfg.trackOpacity
+    defaultValue: TimeModel.DEFAULTS.trackOpacity
     onReleased: function(v) { panelRoot.set({ trackOpacity: Math.round(v * 100) / 100 }) }
   }
 
   PanelSeparator { width: parent.width; foreground: panelRoot.fg }
 
-  // ---------------------------------------------------------- line + marker
-  Header { text: panelRoot.t("section.line") }
+  // ---------------------------------------------------------- direction
+  // Each orientation keeps its own direction, so moving the bar between top
+  // and side doesn't flip it.
+  GroupHeader {
+    text: panelRoot.t("section.direction")
+    atDefault: panelRoot.isDefault("direction")
+    onResetRequested: panelRoot.reset("direction")
+  }
+
+  ButtonGroup {
+    foreground: panelRoot.fg
+    fontFamily: panelRoot.ff
+    value: panelRoot.vertical ? panelRoot.cfg.directionV : panelRoot.cfg.directionH
+    options: panelRoot.vertical
+      ? [{ value: "up", label: panelRoot.t("direction.up") }, { value: "down", label: panelRoot.t("direction.down") }]
+      : [{ value: "left", label: panelRoot.t("direction.left") }, { value: "right", label: panelRoot.t("direction.right") }]
+    onChanged: function(v) { panelRoot.set(panelRoot.vertical ? { directionV: v } : { directionH: v }) }
+  }
+
+  PanelSeparator { width: parent.width; foreground: panelRoot.fg }
+
+  // ---------------------------------------------------------- edge
+  GroupHeader {
+    text: panelRoot.t("section.edge")
+    atDefault: panelRoot.isDefault("edge")
+    onResetRequested: panelRoot.reset("edge")
+  }
 
   ButtonGroup {
     foreground: panelRoot.fg
@@ -237,47 +371,44 @@ Column {
     onChanged: function(v) { panelRoot.set({ edge: v }) }
   }
 
-  // Each orientation keeps its own direction, so moving the bar between top
-  // and side doesn't flip it.
-  ButtonGroup {
-    readonly property bool vertical: controller ? controller.barVertical : false
-    foreground: panelRoot.fg
-    fontFamily: panelRoot.ff
-    value: vertical ? panelRoot.cfg.directionV : panelRoot.cfg.directionH
-    options: vertical
-      ? [{ value: "down", label: panelRoot.t("direction.down") }, { value: "up", label: panelRoot.t("direction.up") }]
-      : [{ value: "right", label: panelRoot.t("direction.right") }, { value: "left", label: panelRoot.t("direction.left") }]
-    onChanged: function(v) { panelRoot.set(vertical ? { directionV: v } : { directionH: v }) }
-  }
-
   Label { text: strings ? strings.t("line.thickness").arg(Commons.I18n.formatNumber(panelRoot.cfg.lineHeight)) : "" }
 
-  PanelSlider {
-    width: parent.width
-    bar: controller ? controller.bar : null
+  DefaultSlider {
     minimum: 1; maximum: 8; step: 1; integer: true
     tickCount: 8
     value: panelRoot.cfg.lineHeight
+    defaultValue: TimeModel.DEFAULTS.lineHeight
     onReleased: function(v) { panelRoot.set({ lineHeight: Math.round(v) }) }
   }
 
-  Header { text: panelRoot.t("section.marker") }
+  PanelSeparator { width: parent.width; foreground: panelRoot.fg }
 
-  // Six styles don't fit one ButtonGroup row, so these wrap.
-  Flow {
+  // ---------------------------------------------------------- marker
+  GroupHeader {
+    text: panelRoot.t("section.marker")
+    atDefault: panelRoot.isDefault("marker")
+    onResetRequested: panelRoot.reset("marker")
+  }
+
+  // All six styles on one line: equal-width chips that share the row.
+  Row {
+    id: markerRow
     width: parent.width
-    spacing: Style.space(6)
+    spacing: Style.space(4)
 
     Repeater {
       model: TimeModel.PIP_STYLES
 
       Button {
         required property string modelData
+        width: (markerRow.width - markerRow.spacing * (TimeModel.PIP_STYLES.length - 1)) / TimeModel.PIP_STYLES.length
         text: panelRoot.t("pip." + modelData)
         bordered: true
         selected: panelRoot.cfg.pipStyle === modelData
         foreground: panelRoot.fg
         fontFamily: panelRoot.ff
+        fontSize: Style.font.bodySmall
+        horizontalPadding: Style.space(2)
         onClicked: panelRoot.set({ pipStyle: modelData })
       }
     }
@@ -298,25 +429,16 @@ Column {
   PanelSeparator { width: parent.width; foreground: panelRoot.fg }
 
   // ---------------------------------------------------------- loop
-  Item {
-    width: parent.width
-    height: Math.max(loopHeader.implicitHeight, previewButton.implicitHeight)
-
-    Header {
-      id: loopHeader
-      anchors.left: parent.left
-      anchors.verticalCenter: parent.verticalCenter
-      text: panelRoot.t("section.loop")
-    }
-
-    Button {
-      id: previewButton
-      anchors.right: parent.right
-      anchors.verticalCenter: parent.verticalCenter
+  GroupHeader {
+    text: panelRoot.t("section.loop")
+    atDefault: panelRoot.isDefault("loop")
+    onResetRequested: panelRoot.reset("loop")
+    trailing: Button {
       text: panelRoot.t("loop.preview")
       bordered: true
       foreground: panelRoot.fg
       fontFamily: panelRoot.ff
+      fontSize: Style.font.bodySmall
       onClicked: if (controller) controller.previewWrap()
     }
   }
@@ -341,7 +463,7 @@ Column {
       anchors.right: parent.right
       anchors.verticalCenter: parent.verticalCenter
       checked: switchRow.checked
-      accent: controller ? controller.lineColor : Commons.Color.accent
+      accent: panelRoot.accentColor
       onToggled: switchRow.toggled()
     }
   }
@@ -358,41 +480,32 @@ Column {
     onToggled: panelRoot.set({ rainbow: !panelRoot.cfg.rainbow })
   }
 
-  PanelSeparator { width: parent.width; foreground: panelRoot.fg }
-
-  // ---------------------------------------------------------- top bar
-  Header { text: panelRoot.t("section.bar") }
-
-  Item {
-    width: parent.width
-    height: Math.max(barHeightLabel.implicitHeight, resetButton.implicitHeight)
-
-    Label {
-      id: barHeightLabel
-      anchors.left: parent.left
-      anchors.verticalCenter: parent.verticalCenter
-      text: !controller || !strings ? ""
-        : (controller.barHeightOverride === null
-          ? strings.t(controller.barVertical ? "bar.widthDefault" : "bar.heightDefault").arg(Commons.I18n.formatNumber(controller.barHeightValue))
-          : strings.t(controller.barVertical ? "bar.width" : "bar.height").arg(Commons.I18n.formatNumber(controller.barHeightValue)))
-    }
-
-    Button {
-      id: resetButton
-      anchors.right: parent.right
-      anchors.verticalCenter: parent.verticalCenter
-      visible: controller !== null && controller.barHeightOverride !== null
-      text: panelRoot.t("bar.reset")
-      foreground: panelRoot.fg
-      onClicked: if (controller) controller.setBarHeight(null)
-    }
+  SwitchRow {
+    label: panelRoot.t("loop.sparks")
+    checked: panelRoot.cfg.sparks
+    onToggled: panelRoot.set({ sparks: !panelRoot.cfg.sparks })
   }
 
-  PanelSlider {
-    width: parent.width
-    bar: controller ? controller.bar : null
+  PanelSeparator { width: parent.width; foreground: panelRoot.fg }
+
+  // ---------------------------------------------------------- bar size
+  GroupHeader {
+    text: panelRoot.t("section.bar")
+    atDefault: !controller || controller.barHeightOverride === null
+    onResetRequested: if (controller) controller.setBarHeight(null)
+  }
+
+  Label {
+    text: !controller || !strings ? ""
+      : (controller.barHeightOverride === null
+        ? strings.t(panelRoot.vertical ? "bar.widthDefault" : "bar.heightDefault").arg(Commons.I18n.formatNumber(controller.barHeightValue))
+        : strings.t(panelRoot.vertical ? "bar.width" : "bar.height").arg(Commons.I18n.formatNumber(controller.barHeightValue)))
+  }
+
+  DefaultSlider {
     minimum: 18; maximum: 48; step: 1; integer: true
     value: controller ? controller.barHeightValue : 26
+    defaultValue: controller ? controller.barHeightThemeDefault : 26
     onReleased: function(v) { if (controller) controller.setBarHeight(Math.round(v)) }
   }
 }

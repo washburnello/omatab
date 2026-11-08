@@ -25,8 +25,40 @@ Panel {
   // ------------------------------------------------------------ settings
   readonly property var cfg: TimeModel.normalize(root.settings)
   readonly property color lineColor: {
+    if (cfg.color.indexOf("theme:") === 0) {
+      var key = cfg.color.slice(6)
+      for (var i = 0; i < themeColors.length; i++) if (themeColors[i].key === key) return themeColors[i].value
+      return Commons.Color.accent
+    }
     var v = TimeModel.colorValue(cfg.color)
     return v ? v : Commons.Color.accent
+  }
+
+  // The whole theme palette, read from its colors.toml; the shell's Color
+  // singleton only keeps a few named roles.
+  property var themeColors: []
+  FileView {
+    id: themeColorsFile
+    path: Commons.Color.currentThemePath + "/colors.toml"
+    watchChanges: true
+    printErrors: false
+    onLoaded: root.themeColors = TimeModel.parseThemeColors(text())
+    onFileChanged: reload()
+  }
+  // A theme switch swaps the directory under the watcher; the accent changing
+  // is the reliable signal.
+  Connections {
+    target: Commons.Color
+    function onAccentChanged() { themeColorsFile.reload() }
+  }
+
+  function resetGroup(group) {
+    var keys = TimeModel.GROUPS[group] || []
+    var entry = { id: root.moduleName }
+    for (var k in root.settings) if (k !== "id" && keys.indexOf(k) === -1) entry[k] = root.settings[k]
+    root.settings = entry
+    if (root.bar && root.bar.shell && typeof root.bar.shell.updateEntryInline === "function")
+      root.bar.shell.updateEntryInline(root.moduleName, entry)
   }
 
   function persistSettings(values) {
@@ -176,6 +208,7 @@ Panel {
     fraction: root.shownFraction
     rainbowLevel: root.rainbowLevel
     rainbowPhase: root.rainbowPhase
+    sparking: root.cfg.sparks && wrapAnim.running
     fillColor: root.lineColor
     trackOpacity: root.cfg.trackOpacity
     lineHeight: root.cfg.lineHeight
@@ -281,7 +314,7 @@ Panel {
     bar: root.bar
     open: root.opened
     focusTarget: panel.loadedContent
-    contentWidth: panel.fittedContentWidth(Style.space(440))
+    contentWidth: panel.fittedContentWidth(Style.space(460))
     contentHeight: panel.fittedContentHeight(panel.loadedContentHeight, Style.space(900))
 
     content: PanelKeyCatcher {

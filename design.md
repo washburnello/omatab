@@ -103,12 +103,17 @@ Inline on the widget's `shell.json` layout entry, written through
   "pipStyle": "circle",
   "pipSize": "medium",
   "loopAnimation": true,
-  "rainbow": false
+  "rainbow": false,
+  "sparks": false
 }
 ```
 
-- **color:** `theme` (the theme accent, follows theme switches), `red`, `orange`,
-  `yellow`, `green`, `cyan`, `blue`, `purple`, `pink`, `white`.
+- **color:**
+  - `theme`: the theme accent.
+  - `theme:<key>`: any color in the current theme's `colors.toml`, read by the
+    plugin, since the shell's `Color` singleton keeps only a few roles. Both
+    `theme` forms follow theme switches.
+  - Presets: `red`, `orange`, `yellow`, `green`, `cyan`, `blue`, `purple`, `pink`, `white`.
 - **trackOpacity:** the empty part is the same color at this opacity.
 - **lineHeight:** 1–8 px.
 - **pipStyle:** `circle`, `triangle` (apex on the line, hanging away from the
@@ -121,6 +126,10 @@ sweep back to the new value over `Style.duration(1400)` with an ease-out curve,
 so the wrap reads as a loop.
 
 - `loopAnimation` (default on) turns the sweep on or off.
+- `sparks` (default off) rains glowing particles from the head during the sweep.
+  They fall away from the screen edge under gravity and take the pip's color,
+  rainbow included. The particle system only runs while emitting or while
+  sparks are still alive.
 - `rainbow` (default off) fades in a scrolling rainbow gradient on the fill and a
   hue-cycling pip during the sweep, then fades it back out over 320 ms.
 - **Preview** in the panel (or `.ctl previewLoop`) plays the sweep from full.
@@ -148,9 +157,19 @@ drawn height scales with `[font] base-size`.
 - **Tooltip:** `2:54 PM · 6 min left · 90%`.
 - **Left-click:** opens the settings panel (`KeyboardPanel`). **Right-click:**
   turns the line on or off.
-- **Panel sections:** title with enable switch; current range and time left;
-  Time span; Color (swatches and track slider); Line (edge, thickness); Marker;
-  Loop (sweep, rainbow, preview); Bar size (height or width slider, and reset).
+- **Panel:** title with enable switch, then current range and time left.
+- **Groups:**
+  - Time span
+  - Color: a row of theme swatches, a row of preset swatches, track slider
+  - Direction
+  - Edge: inner/outer, thickness
+  - Marker: six styles on one row, size
+  - Loop: sweep, rainbow, sparks, preview
+  - Bar size
+- **Reset:** each group header has an icon-only reset button for that group's
+  keys (`TimeModel.GROUPS`), dimmed when the group is already at its defaults.
+- **Sliders:** each slider has a small pip in the line color under its track
+  marking the default value.
 
 ### IPC
 - `omarchy-shell washburnello.omaprogress open|close|toggle`: the panel.

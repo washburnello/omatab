@@ -6,11 +6,11 @@ fills as the hour (or day, or a custom block) passes, with a pip marking now.
 
 - **Spans:** the clock hour (default), the day, or a custom start time and length
   that loops or holds.
-- **Look:** follow the theme accent or pick a preset color; track opacity; line
+- **Look:** any color from the current theme, or a preset; track opacity; line
   thickness 1–8 px; inner or screen edge; direction of travel; circle, triangle, diamond, tick, glow
   or no pip, in three sizes.
-- **Loop sweep:** when a span loops, the marker sweeps back to zero (optionally
-  in a rainbow) instead of jumping.
+- **Loop sweep:** when a span loops, the marker sweeps back to zero instead of
+  jumping, optionally in a rainbow and raining sparks.
 - **Bar size:** set the bar's height (or width, on a side) from the same panel;
   writes `[bar] size-horizontal`/`size-vertical` to `~/.config/omarchy/shell.toml`.
 - **Bar icon:** a ring showing progress. Click for settings, right-click to toggle
