@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "washburnello.omaprogress",
+  "name": "OmaProgress",
+  "version": "0.1.0",
+  "author": "washburnello",
+  "license": "MIT",
+  "description": "A thin progress line along the bottom edge of the top bar showing how far through the hour, day, or a custom time block you are.",
+  "kinds": ["bar-widget"],
+  "entryPoints": {
+    "barWidget": "Widget.qml"
+  },
+  "barWidget": {
+    "displayName": "OmaProgress",
+    "description": "Time-progress line on the bar's edge; click for settings, right-click to toggle",
+    "category": "Time",
+    "aliases": ["progress", "timebar", "time progress"],
+    "allowMultiple": false
+  }
+}
