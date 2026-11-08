@@ -4,9 +4,11 @@ import qs.Commons
 
 // The progress line itself. Widget.qml reparents this onto the bar window's
 // content item, which spans the screen, so it paints over the bar strip and
-// the clear surface below it without being a window of its own. It takes no
+// the clear surface past it without being a window of its own. It takes no
 // input: the bar's input mask covers only the strip, and enabled: false keeps
 // this item from eating presses meant for bar widgets.
+//
+// Geometry is "along" the bar (the direction of travel) and "across" it.
 Item {
   id: root
 
@@ -17,12 +19,16 @@ Item {
   property int lineHeight: 2
   property string pipStyle: "circle"
   property int pipSize: 9
-  // Top of the line in this item's coordinates; Widget.qml places it on
-  // whichever bar edge is chosen, always inside the bar strip.
-  property real lineY: 0
-  // Which way the triangle hangs: into the bar for the screen edge, out of
-  // it for the inner edge.
-  property bool hangDown: true
+  // A left/right bar runs the line top-to-bottom.
+  property bool vertical: false
+  // Travel right-to-left, or bottom-to-top.
+  property bool reverse: false
+  // Near side of the line across the bar, in this item's coordinates; Widget.qml
+  // places it on whichever bar edge is chosen, always inside the bar strip.
+  property real lineCross: 0
+  // Which way a triangle hangs across the bar, away from the screen edge:
+  // +1 toward larger x/y, -1 toward smaller.
+  property int hang: 1
   // Rainbow sweep during a loop wrap: level fades it in and out, phase
   // scrolls the hues.
   property real rainbowLevel: 0
@@ -32,6 +38,9 @@ Item {
     var h = (offset + rainbowPhase) % 1
     return Qt.hsla(h < 0 ? h + 1 : h, 0.85, 0.62, 1)
   }
+  // Gradient stops run left-to-right / top-to-bottom; the head always gets
+  // hue(1) so it matches the pip.
+  function stopHue(pos) { return hue(reverse ? 1 - pos : pos) }
   readonly property color pipColor: rainbowLevel > 0
     ? Qt.tint(fillColor, Qt.hsla(((rainbowPhase % 1) + 1) % 1, 0.85, 0.62, rainbowLevel))
     : fillColor
@@ -45,41 +54,48 @@ Item {
     NumberAnimation { duration: Style.duration(root.shown ? 180 : 120); easing.type: Easing.OutCubic }
   }
 
-  readonly property real lineMid: lineY + lineHeight / 2
-  readonly property real headX: Math.round(fraction * width)
+  readonly property real length: vertical ? height : width
+  readonly property real filled: Math.round(fraction * length)
+  readonly property real fillStart: reverse ? length - filled : 0
+  readonly property real headAlong: reverse ? length - filled : filled
+  readonly property real lineMid: lineCross + lineHeight / 2
 
-  Rectangle {
-    x: 0
-    y: root.lineY
-    width: root.width
-    height: root.lineHeight
+  // A span of the line from `along` for `extent`, mapped to x/y.
+  component Segment: Rectangle {
+    property real along: 0
+    property real extent: 0
+    x: root.vertical ? root.lineCross : along
+    y: root.vertical ? along : root.lineCross
+    width: root.vertical ? root.lineHeight : extent
+    height: root.vertical ? extent : root.lineHeight
+  }
+
+  Segment {
+    along: 0
+    extent: root.length
     color: Qt.rgba(root.fillColor.r, root.fillColor.g, root.fillColor.b, root.trackOpacity)
   }
 
-  Rectangle {
-    x: 0
-    y: root.lineY
-    width: root.headX
-    height: root.lineHeight
+  Segment {
+    along: root.fillStart
+    extent: root.filled
     color: root.fillColor
   }
 
-  Rectangle {
+  Segment {
     visible: root.rainbowLevel > 0
     opacity: root.rainbowLevel
-    x: 0
-    y: root.lineY
-    width: root.headX
-    height: root.lineHeight
+    along: root.fillStart
+    extent: root.filled
     gradient: Gradient {
-      orientation: Gradient.Horizontal
-      GradientStop { position: 0.0; color: root.hue(0.0) }
-      GradientStop { position: 0.1667; color: root.hue(0.1667) }
-      GradientStop { position: 0.3333; color: root.hue(0.3333) }
-      GradientStop { position: 0.5; color: root.hue(0.5) }
-      GradientStop { position: 0.6667; color: root.hue(0.6667) }
-      GradientStop { position: 0.8333; color: root.hue(0.8333) }
-      GradientStop { position: 1.0; color: root.hue(1.0) }
+      orientation: root.vertical ? Gradient.Vertical : Gradient.Horizontal
+      GradientStop { position: 0.0; color: root.stopHue(0.0) }
+      GradientStop { position: 0.1667; color: root.stopHue(0.1667) }
+      GradientStop { position: 0.3333; color: root.stopHue(0.3333) }
+      GradientStop { position: 0.5; color: root.stopHue(0.5) }
+      GradientStop { position: 0.6667; color: root.stopHue(0.6667) }
+      GradientStop { position: 0.8333; color: root.stopHue(0.8333) }
+      GradientStop { position: 1.0; color: root.stopHue(1.0) }
     }
   }
 
@@ -87,8 +103,8 @@ Item {
     id: pip
     readonly property real size: Math.max(root.pipSize, root.lineHeight + 4)
     visible: root.pipStyle !== "none"
-    x: root.headX - size / 2
-    y: root.lineMid - size / 2
+    x: (root.vertical ? root.lineMid : root.headAlong) - size / 2
+    y: (root.vertical ? root.headAlong : root.lineMid) - size / 2
     width: size
     height: size
 
@@ -109,31 +125,38 @@ Item {
       color: root.pipColor
     }
 
+    // Across the line.
     Rectangle {
       visible: root.pipStyle === "tick"
       anchors.centerIn: parent
-      width: Math.max(2, Math.round(root.lineHeight))
-      height: parent.height + 2
-      radius: width / 2
+      readonly property real thin: Math.max(2, Math.round(root.lineHeight))
+      width: root.vertical ? parent.width + 2 : thin
+      height: root.vertical ? thin : parent.height + 2
+      radius: Math.min(width, height) / 2
       color: root.pipColor
     }
 
-    // Apex on the line.
-    Shape {
+    // Drawn hanging down (+y) with its apex on the pip's centre, then turned
+    // about that centre to hang the way `hang` says.
+    Item {
       visible: root.pipStyle === "triangle"
-      x: 0
-      y: parent.height / 2 - (root.hangDown ? 0 : parent.height)
-      width: parent.width
-      height: parent.height
-      preferredRendererType: Shape.CurveRenderer
-      ShapePath {
-        strokeWidth: 0
-        strokeColor: "transparent"
-        fillColor: root.pipColor
-        startX: pip.width / 2; startY: root.hangDown ? 0 : pip.height
-        PathLine { x: pip.width; y: root.hangDown ? pip.height : 0 }
-        PathLine { x: 0; y: root.hangDown ? pip.height : 0 }
-        PathLine { x: pip.width / 2; y: root.hangDown ? 0 : pip.height }
+      anchors.fill: parent
+      rotation: root.vertical ? (root.hang > 0 ? -90 : 90) : (root.hang > 0 ? 0 : 180)
+
+      Shape {
+        y: parent.height / 2
+        width: parent.width
+        height: parent.height
+        preferredRendererType: Shape.CurveRenderer
+        ShapePath {
+          strokeWidth: 0
+          strokeColor: "transparent"
+          fillColor: root.pipColor
+          startX: pip.width / 2; startY: 0
+          PathLine { x: pip.width; y: pip.height }
+          PathLine { x: 0; y: pip.height }
+          PathLine { x: pip.width / 2; y: 0 }
+        }
       }
     }
 

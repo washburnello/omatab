@@ -1,7 +1,7 @@
 # omaprogress — design
 
 An Omarchy shell plugin that shows time passing as a thin, YouTube-style progress
-line on an edge of the top bar, with a bar icon for toggling and settings.
+line on an edge of the bar (any side), with a bar icon for toggling and settings.
 
 - Plugin id: `washburnello.omaprogress`, kind `bar-widget` (icon in `bar.layout.right`)
 - Location: `~/.config/omarchy/plugins/washburnello.omaprogress/`
@@ -41,10 +41,21 @@ bar gets its own line because the widget exists once per screen.
   - `outer`: it sits on the screen edge, i.e. the top `lineHeight` px.
 - In both cases the line stays inside the bar strip and gets thicker inward from
   the edge it sits on.
-- Width: the full screen width. The pip is centered on the line at
-  `x = fraction × width`. Wherever it pokes past the strip it is on the clear,
-  click-through part of the surface.
-- Bottom bar: mirrored. Vertical bar: the line is hidden.
+- Length: the full screen width, or full height for a left/right bar. The pip
+  is centered on the line at `fraction × length`. Wherever it pokes past the
+  strip it is on the clear, click-through part of the surface.
+- **All four bar positions.** `Strip.qml` works in along/across terms:
+  - top/bottom: along = x, across = y
+  - left/right: along = y, across = x
+  - A bottom or right bar sits on the far side of the surface, so "inner" and
+    "screen edge" swap sides there.
+  - A triangle pip always hangs away from the screen edge.
+- **Direction of travel.** Each orientation keeps its own setting, so moving the
+  bar between the top and a side doesn't flip it:
+  - `directionH`: `right` (left to right, default) or `left`, for top/bottom bars
+  - `directionV`: `down` (top to bottom, default) or `up`, for side bars
+  - Reversed travel fills from the far end, and the rainbow gradient is
+    mirrored so its head still matches the pip.
 - **Safety guard:** the line hides if the surface is not taller than the strip
   plus the line. That would mean a future Omarchy update stopped making the bar
   surface span its screen.
@@ -86,6 +97,8 @@ Inline on the widget's `shell.json` layout entry, written through
   "color": "theme",
   "trackOpacity": 0.25,
   "edge": "inner",
+  "directionH": "right",
+  "directionV": "down",
   "lineHeight": 2,
   "pipStyle": "circle",
   "pipSize": "medium",
@@ -114,8 +127,10 @@ so the wrap reads as a loop.
 - The line and ring draw `shownFraction`, not `span.fraction` directly.
 - With animations turned off (`omarchy toggle animations`) the sweep is instant.
 
-### Top bar height
-The bar's own height is the `[bar] size-horizontal` token. The plugin writes it
+### Bar size
+The bar's own thickness is the `[bar] size-horizontal` token (a top or bottom
+bar's height), or `size-vertical` (a side bar's width). The panel edits whichever
+one matches the bar's current orientation. The plugin writes it
 to the machine-level `~/.config/omarchy/shell.toml`, the same file
 `omarchy display text size` uses for `[font]`. The shell watches that file and
 lets it override the theme, so the change applies live and survives theme
@@ -135,7 +150,7 @@ drawn height scales with `[font] base-size`.
   turns the line on or off.
 - **Panel sections:** title with enable switch; current range and time left;
   Time span; Color (swatches and track slider); Line (edge, thickness); Marker;
-  Loop (sweep, rainbow, preview); Top bar (height slider and reset).
+  Loop (sweep, rainbow, preview); Bar size (height or width slider, and reset).
 
 ### IPC
 - `omarchy-shell washburnello.omaprogress open|close|toggle`: the panel.

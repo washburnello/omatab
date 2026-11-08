@@ -237,6 +237,19 @@ Column {
     onChanged: function(v) { panelRoot.set({ edge: v }) }
   }
 
+  // Each orientation keeps its own direction, so moving the bar between top
+  // and side doesn't flip it.
+  ButtonGroup {
+    readonly property bool vertical: controller ? controller.barVertical : false
+    foreground: panelRoot.fg
+    fontFamily: panelRoot.ff
+    value: vertical ? panelRoot.cfg.directionV : panelRoot.cfg.directionH
+    options: vertical
+      ? [{ value: "down", label: panelRoot.t("direction.down") }, { value: "up", label: panelRoot.t("direction.up") }]
+      : [{ value: "right", label: panelRoot.t("direction.right") }, { value: "left", label: panelRoot.t("direction.left") }]
+    onChanged: function(v) { panelRoot.set(vertical ? { directionV: v } : { directionH: v }) }
+  }
+
   Label { text: strings ? strings.t("line.thickness").arg(Commons.I18n.formatNumber(panelRoot.cfg.lineHeight)) : "" }
 
   PanelSlider {
@@ -360,8 +373,8 @@ Column {
       anchors.verticalCenter: parent.verticalCenter
       text: !controller || !strings ? ""
         : (controller.barHeightOverride === null
-          ? strings.t("bar.heightDefault").arg(Commons.I18n.formatNumber(controller.barHeightValue))
-          : strings.t("bar.height").arg(Commons.I18n.formatNumber(controller.barHeightValue)))
+          ? strings.t(controller.barVertical ? "bar.widthDefault" : "bar.heightDefault").arg(Commons.I18n.formatNumber(controller.barHeightValue))
+          : strings.t(controller.barVertical ? "bar.width" : "bar.height").arg(Commons.I18n.formatNumber(controller.barHeightValue)))
     }
 
     Button {

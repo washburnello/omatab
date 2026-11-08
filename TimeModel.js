@@ -3,6 +3,8 @@
 var MODES = ["hour", "day", "custom"]
 var END_BEHAVIORS = ["loop", "hold"]
 var EDGES = ["inner", "outer"]
+var DIRECTIONS_H = ["right", "left"]
+var DIRECTIONS_V = ["down", "up"]
 var PIP_STYLES = ["circle", "triangle", "diamond", "tick", "glow", "none"]
 var PIP_SIZES = { small: 6, medium: 9, large: 13 }
 
@@ -29,6 +31,8 @@ var DEFAULTS = {
   trackOpacity: 0.25,
   lineHeight: 2,
   edge: "inner",
+  directionH: "right",
+  directionV: "down",
   pipStyle: "circle",
   pipSize: "medium",
   loopAnimation: true,
@@ -79,6 +83,8 @@ function normalize(raw) {
     color: oneOf(s.color, colorIds(), DEFAULTS.color),
     trackOpacity: clamp(isFinite(Number(s.trackOpacity)) && s.trackOpacity !== null ? Number(s.trackOpacity) : DEFAULTS.trackOpacity, 0, 1),
     edge: oneOf(s.edge, EDGES, DEFAULTS.edge),
+    directionH: oneOf(s.directionH, DIRECTIONS_H, DEFAULTS.directionH),
+    directionV: oneOf(s.directionV, DIRECTIONS_V, DEFAULTS.directionV),
     lineHeight: Math.round(clamp(Number(s.lineHeight) || DEFAULTS.lineHeight, 1, 8)),
     pipStyle: oneOf(s.pipStyle, PIP_STYLES, DEFAULTS.pipStyle),
     pipSize: PIP_SIZES.hasOwnProperty(s.pipSize) ? s.pipSize : DEFAULTS.pipSize,

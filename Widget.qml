@@ -44,7 +44,7 @@ Panel {
 
   // About one pixel of travel per tick.
   Timer {
-    interval: Math.max(250, Math.min(60000, Math.round(root.span.durationMs / Math.max(1, strip.width || 1920))))
+    interval: Math.max(250, Math.min(60000, Math.round(root.span.durationMs / Math.max(1, strip.length || 1920))))
     running: true
     repeat: true
     triggeredOnStart: true
@@ -150,16 +150,20 @@ Panel {
   }
   // The bar surface spanning its screen is an implementation detail of the
   // stock bar. If it ever shrinks to the strip, hide rather than draw clipped.
+  readonly property real surfaceAcross: hostItem ? (barVertical ? hostItem.width : hostItem.height) : 0
   readonly property bool surfaceFits: hostItem !== null && thickness > 0
-    && hostItem.height > thickness + cfg.lineHeight + 4
-  // The bar strip spans [stripTop, stripTop + thickness) on the surface.
-  readonly property real stripTop: barPosition === "bottom" && hostItem ? hostItem.height - thickness : 0
+    && surfaceAcross > thickness + cfg.lineHeight + 4
+  // Across the bar, the strip spans [stripStart, stripStart + thickness) on
+  // the surface; a bottom or right bar sits on the far side.
+  readonly property bool barOnFarSide: barPosition === "bottom" || barPosition === "right"
+  readonly property real stripStart: barOnFarSide ? surfaceAcross - thickness : 0
   readonly property bool onScreenEdge: cfg.edge === "outer"
-  readonly property real lineY: {
-    var atStripTop = (barPosition === "bottom") !== onScreenEdge
-    return atStripTop ? stripTop : stripTop + thickness - cfg.lineHeight
+  readonly property real lineCross: {
+    var atStripStart = barOnFarSide !== onScreenEdge
+    return atStripStart ? stripStart : stripStart + thickness - cfg.lineHeight
   }
-  readonly property bool lineVisible: cfg.enabled && !barVertical && surfaceFits
+  readonly property bool travelReversed: barVertical ? cfg.directionV === "up" : cfg.directionH === "left"
+  readonly property bool lineVisible: cfg.enabled && surfaceFits
 
   Strip {
     id: strip
@@ -177,25 +181,29 @@ Panel {
     lineHeight: root.cfg.lineHeight
     pipStyle: root.cfg.pipStyle
     pipSize: TimeModel.PIP_SIZES[root.cfg.pipSize]
-    lineY: root.lineY
-    hangDown: root.barPosition !== "bottom"
+    vertical: root.barVertical
+    reverse: root.travelReversed
+    lineCross: root.lineCross
+    hang: root.barOnFarSide ? -1 : 1
   }
 
-  // ------------------------------------------------------------ top bar height
+  // ------------------------------------------------------------ bar size
   // Machine-level override file shared with `omarchy display text size`;
-  // only the [bar] size-horizontal line is ever touched.
+  // only the one [bar] size line for the current orientation is touched:
+  // size-horizontal is a top/bottom bar's height, size-vertical a side bar's width.
   readonly property string userTomlPath: Quickshell.env("HOME") + "/.config/omarchy/shell.toml"
   property string userTomlText: ""
-  readonly property var barHeightOverride: Toml.readNumber(userTomlText, "bar", "size-horizontal")
+  readonly property string barSizeKey: barVertical ? "size-vertical" : "size-horizontal"
+  readonly property var barHeightOverride: Toml.readNumber(userTomlText, "bar", barSizeKey)
   readonly property int barHeightThemeDefault: {
-    var v = Number(Commons.Color.themeShellValues ? Commons.Color.themeShellValues["bar.size-horizontal"] : NaN)
-    return isFinite(v) && v > 0 ? Math.round(v) : 26
+    var v = Number(Commons.Color.themeShellValues ? Commons.Color.themeShellValues["bar." + barSizeKey] : NaN)
+    return isFinite(v) && v > 0 ? Math.round(v) : (barVertical ? 28 : 26)
   }
   readonly property int barHeightValue: barHeightOverride !== null ? Math.round(barHeightOverride) : barHeightThemeDefault
 
   function setBarHeight(value) {
     var v = value === null ? null : Math.round(Math.max(16, Math.min(64, value)))
-    var next = Toml.setNumber(userTomlFile.text(), "bar", "size-horizontal", v)
+    var next = Toml.setNumber(userTomlFile.text(), "bar", root.barSizeKey, v)
     userTomlFile.setText(next)
     // A FileView's own write raises no change signal.
     root.userTomlText = next
@@ -314,7 +322,7 @@ Panel {
       return JSON.stringify({
         cfg: root.cfg, fraction: root.span.fraction, remainingMs: root.span.remainingMs,
         thickness: root.thickness, surfaceFits: root.surfaceFits, lineVisible: root.lineVisible,
-        hostHeight: root.hostItem ? root.hostItem.height : -1, barHeight: root.barHeightValue
+        surfaceAcross: root.surfaceAcross, lineCross: root.lineCross, vertical: root.barVertical, reversed: root.travelReversed, barHeight: root.barHeightValue
       })
     }
   }

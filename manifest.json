@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "author": "washburnello",
   "license": "MIT",
-  "description": "A thin progress line along the bottom edge of the top bar showing how far through the hour, day, or a custom time block you are.",
+  "description": "A thin progress line along an edge of the bar showing how far through the hour, day, or a custom time block you are.",
   "kinds": ["bar-widget"],
   "entryPoints": {
     "barWidget": "Widget.qml"
