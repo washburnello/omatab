@@ -2,7 +2,7 @@
 
 Versions follow MAJOR.MINOR. Release scope is tracked in GitHub milestones; issues carry a `version:X.Y` label.
 
-## 0.1 (unreleased)
+## 0.1 — 2026-11-09
 - Named OmaTAB (Omarchy Time Awareness Bar); plugin id `washburnello.omatab`.
 - Progress line drawn on the bar's own surface, in front of the strip, per screen.
 - Hour / day / custom spans; custom start + length, loop or hold.
