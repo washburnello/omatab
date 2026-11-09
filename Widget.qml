@@ -8,7 +8,6 @@ import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
 import "TimeModel.js" as TimeModel
-import "Toml.js" as Toml
 
 // Bar icon + settings for the time-progress line. The line (Strip.qml) is
 // drawn on this bar window's own surface rather than in a window of its own:
@@ -17,8 +16,8 @@ import "Toml.js" as Toml
 // strip's inner edge, in front of it, and park/fade with the bar for free.
 Panel {
   id: root
-  moduleName: "washburnello.omaprogress"
-  ipcTarget: "washburnello.omaprogress"
+  moduleName: "washburnello.omatab"
+  ipcTarget: "washburnello.omatab"
 
   Commons.Translations { id: tr; directory: Qt.resolvedUrl("i18n") }
 
@@ -220,38 +219,6 @@ Panel {
     hang: root.barOnFarSide ? -1 : 1
   }
 
-  // ------------------------------------------------------------ bar size
-  // Machine-level override file shared with `omarchy display text size`;
-  // only the one [bar] size line for the current orientation is touched:
-  // size-horizontal is a top/bottom bar's height, size-vertical a side bar's width.
-  readonly property string userTomlPath: Quickshell.env("HOME") + "/.config/omarchy/shell.toml"
-  property string userTomlText: ""
-  readonly property string barSizeKey: barVertical ? "size-vertical" : "size-horizontal"
-  readonly property var barHeightOverride: Toml.readNumber(userTomlText, "bar", barSizeKey)
-  readonly property int barHeightThemeDefault: {
-    var v = Number(Commons.Color.themeShellValues ? Commons.Color.themeShellValues["bar." + barSizeKey] : NaN)
-    return isFinite(v) && v > 0 ? Math.round(v) : (barVertical ? 28 : 26)
-  }
-  readonly property int barHeightValue: barHeightOverride !== null ? Math.round(barHeightOverride) : barHeightThemeDefault
-
-  function setBarHeight(value) {
-    var v = value === null ? null : Math.round(Math.max(16, Math.min(64, value)))
-    var next = Toml.setNumber(userTomlFile.text(), "bar", root.barSizeKey, v)
-    userTomlFile.setText(next)
-    // A FileView's own write raises no change signal.
-    root.userTomlText = next
-  }
-
-  FileView {
-    id: userTomlFile
-    path: root.userTomlPath
-    watchChanges: true
-    printErrors: false
-    onLoaded: root.userTomlText = text()
-    onLoadFailed: root.userTomlText = ""
-    onFileChanged: reload()
-  }
-
   // ------------------------------------------------------------ bar button
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
@@ -345,17 +312,15 @@ Panel {
   }
 
   IpcHandler {
-    target: "washburnello.omaprogress.ctl"
+    target: "washburnello.omatab.ctl"
 
     function toggleLine(): string { root.persistSettings({ enabled: !root.cfg.enabled }); return "ok" }
     function previewLoop(): string { root.previewWrap(); return "ok" }
-    // 0 goes back to the theme default.
-    function barHeight(value: int): string { root.setBarHeight(value > 0 ? value : null); return "ok" }
     function status(): string {
       return JSON.stringify({
         cfg: root.cfg, fraction: root.span.fraction, remainingMs: root.span.remainingMs,
         thickness: root.thickness, surfaceFits: root.surfaceFits, lineVisible: root.lineVisible,
-        surfaceAcross: root.surfaceAcross, lineCross: root.lineCross, vertical: root.barVertical, reversed: root.travelReversed, barHeight: root.barHeightValue
+        surfaceAcross: root.surfaceAcross, lineCross: root.lineCross, vertical: root.barVertical, reversed: root.travelReversed
       })
     }
   }

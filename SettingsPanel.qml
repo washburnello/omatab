@@ -5,8 +5,8 @@ import qs.Ui
 import "TimeModel.js" as TimeModel
 
 // Every control writes straight through controller.persistSettings(), which
-// lands in shell.json and hot-reloads; the bar size goes to the user
-// shell.toml instead. Each group's header carries a reset-to-defaults icon.
+// lands in shell.json and hot-reloads. Each group's header carries a
+// reset-to-defaults icon.
 Column {
   id: panelRoot
 
@@ -484,28 +484,5 @@ Column {
     label: panelRoot.t("loop.sparks")
     checked: panelRoot.cfg.sparks
     onToggled: panelRoot.set({ sparks: !panelRoot.cfg.sparks })
-  }
-
-  PanelSeparator { width: parent.width; foreground: panelRoot.fg }
-
-  // ---------------------------------------------------------- bar size
-  GroupHeader {
-    text: panelRoot.t("section.bar")
-    atDefault: !controller || controller.barHeightOverride === null
-    onResetRequested: if (controller) controller.setBarHeight(null)
-  }
-
-  Label {
-    text: !controller || !strings ? ""
-      : (controller.barHeightOverride === null
-        ? strings.t(panelRoot.vertical ? "bar.widthDefault" : "bar.heightDefault").arg(Commons.I18n.formatNumber(controller.barHeightValue))
-        : strings.t(panelRoot.vertical ? "bar.width" : "bar.height").arg(Commons.I18n.formatNumber(controller.barHeightValue)))
-  }
-
-  DefaultSlider {
-    minimum: 18; maximum: 48; step: 1; integer: true
-    value: controller ? controller.barHeightValue : 26
-    defaultValue: controller ? controller.barHeightThemeDefault : 26
-    onReleased: function(v) { if (controller) controller.setBarHeight(Math.round(v)) }
   }
 }

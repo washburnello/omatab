@@ -1,9 +1,8 @@
 {
-  "title": "Time progress",
+  "title": "Time awareness",
   "section.span": "Time span",
   "section.color": "Color",
   "section.marker": "Marker",
-  "section.bar": "Bar size",
   "section.loop": "Loop",
   "loop.animate": "Sweep back when it loops",
   "loop.rainbow": "Rainbow while sweeping",
@@ -45,11 +44,6 @@
   "size.small": "S",
   "size.medium": "M",
   "size.large": "L",
-  "bar.height": "Height %1",
-  "bar.heightDefault": "Height %1 (theme default)",
-  "bar.width": "Width %1",
-  "bar.widthDefault": "Width %1 (theme default)",
-  "bar.reset": "Use theme default",
   "span.range": "%1 – %2",
   "remaining.minutes": {
     "one": "%1 min left",

@@ -191,6 +191,12 @@ Item {
   // Sparks fall away from the screen edge, across the bar, under gravity.
   // The system only runs while emitting or while sparks are still alive.
   readonly property real fallAngle: vertical ? (hang > 0 ? 0 : 180) : (hang > 0 ? 90 : 270)
+  readonly property real sparkGravity: 420
+  // Distance from the line to the far edge of the screen, and how long the
+  // slowest spark (≈30 px/s toward it) takes to fall that far, so every one
+  // leaves the screen instead of dying partway down.
+  readonly property real fallDistance: hang > 0 ? (vertical ? width : height) - lineMid : lineMid
+  readonly property int sparkLife: Math.ceil(1000 * (-30 + Math.sqrt(900 + 2 * sparkGravity * Math.max(0, fallDistance))) / sparkGravity) + 250
 
   ParticleSystem {
     id: sparkSystem
@@ -200,7 +206,7 @@ Item {
 
   ImageParticle {
     system: sparkSystem
-    source: "qrc:///particleresources/glowdot.png"
+    source: Qt.resolvedUrl("assets/spark.png")
     color: root.pipColor
     colorVariation: root.rainbowLevel > 0 ? 0.45 : 0.08
     alpha: 1
@@ -214,12 +220,12 @@ Item {
     y: (root.vertical ? root.headAlong : root.lineMid) - 2
     width: 4
     height: 4
-    emitRate: 240
-    lifeSpan: 1000
-    lifeSpanVariation: 350
-    size: 11
-    sizeVariation: 4
-    endSize: 3
+    emitRate: 200
+    lifeSpan: root.sparkLife
+    lifeSpanVariation: 0
+    size: 6
+    sizeVariation: 2
+    endSize: 4
     velocity: AngleDirection {
       angle: root.fallAngle
       angleVariation: 35
@@ -232,6 +238,6 @@ Item {
     system: sparkSystem
     anchors.fill: parent
     angle: root.fallAngle
-    magnitude: 420
+    magnitude: root.sparkGravity
   }
 }

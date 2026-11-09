@@ -1,12 +1,12 @@
-# omaprogress — design
+# OmaTAB (Omarchy Time Awareness Bar) — design
 
 An Omarchy shell plugin that shows time passing as a thin, YouTube-style progress
 line on an edge of the bar (any side), with a bar icon for toggling and settings.
 
-- Plugin id: `washburnello.omaprogress`, kind `bar-widget` (icon in `bar.layout.right`)
-- Location: `~/.config/omarchy/plugins/washburnello.omaprogress/`
-- Tracking: private GitHub repo `washburnello/omaprogress`, Kaneo project
-  `omaprogress` (workspace `w4sh`), `MAJOR.MINOR` versions via `version-track`
+- Plugin id: `washburnello.omatab`, kind `bar-widget` (icon in `bar.layout.right`)
+- Location: `~/.config/omarchy/plugins/washburnello.omatab/`
+- Tracking: GitHub repo `washburnello/omatab`, Kaneo project `omatab`
+  (workspace `w4sh`), `MAJOR.MINOR` versions via `version-track`
 
 ## Goal
 
@@ -88,7 +88,7 @@ Inline on the widget's `shell.json` layout entry, written through
 
 ```json
 {
-  "id": "washburnello.omaprogress",
+  "id": "washburnello.omatab",
   "enabled": true,
   "mode": "hour",
   "startTime": "08:00",
@@ -126,29 +126,16 @@ sweep back to the new value over `Style.duration(1400)` with an ease-out curve,
 so the wrap reads as a loop.
 
 - `loopAnimation` (default on) turns the sweep on or off.
-- `sparks` (default off) rains glowing particles from the head during the sweep.
-  They fall away from the screen edge under gravity and take the pip's color,
-  rainbow included. The particle system only runs while emitting or while
+- `sparks` (default off) rains solid sparks (`assets/spark.png`, tinted) from the
+  head during the sweep. They fall away from the screen edge under gravity, take
+  the pip's color (rainbow included), and live long enough for the slowest one to
+  reach the far edge of the screen. The particle system only runs while emitting or while
   sparks are still alive.
 - `rainbow` (default off) fades in a scrolling rainbow gradient on the fill and a
   hue-cycling pip during the sweep, then fades it back out over 320 ms.
 - **Preview** in the panel (or `.ctl previewLoop`) plays the sweep from full.
 - The line and ring draw `shownFraction`, not `span.fraction` directly.
 - With animations turned off (`omarchy toggle animations`) the sweep is instant.
-
-### Bar size
-The bar's own thickness is the `[bar] size-horizontal` token (a top or bottom
-bar's height), or `size-vertical` (a side bar's width). The panel edits whichever
-one matches the bar's current orientation. The plugin writes it
-to the machine-level `~/.config/omarchy/shell.toml`, the same file
-`omarchy display text size` uses for `[font]`. The shell watches that file and
-lets it override the theme, so the change applies live and survives theme
-switches.
-
-`Toml.js` edits only that one line and leaves other sections and comments as they
-are. "Use theme default" removes the key, and removes the `[bar]` section too if
-nothing else is in it. The value is the raw token; with `scale-with-font` the
-drawn height scales with `[font] base-size`.
 
 ## Bar icon and panel (`Widget.qml`, `SettingsPanel.qml`)
 
@@ -165,18 +152,16 @@ drawn height scales with `[font] base-size`.
   - Edge: inner/outer, thickness
   - Marker: six styles on one row, size
   - Loop: sweep, rainbow, sparks, preview
-  - Bar size
 - **Reset:** each group header has an icon-only reset button for that group's
   keys (`TimeModel.GROUPS`), dimmed when the group is already at its defaults.
 - **Sliders:** each slider has a small pip in the line color under its track
   marking the default value.
 
 ### IPC
-- `omarchy-shell washburnello.omaprogress open|close|toggle`: the panel.
-- `omarchy-shell washburnello.omaprogress.ctl status`: JSON diagnostics.
+- `omarchy-shell washburnello.omatab open|close|toggle`: the panel.
+- `omarchy-shell washburnello.omatab.ctl status`: JSON diagnostics.
 - `... .ctl toggleLine`: turns the line on or off.
 - `... .ctl previewLoop`: plays the loop sweep.
-- `... .ctl barHeight <n>`: sets the bar height (`0` = theme default).
 
 ## Shell conventions followed
 
@@ -184,7 +169,7 @@ drawn height scales with `[font] base-size`.
 - `Style.duration()` for the 180/120 ms fade, eased out.
 - Strings through `Commons.Translations` (`i18n/en.json`), numbers through
   `Commons.I18n.formatNumber`, times through `Qt.locale(Commons.I18n.formatLocale)`.
-- No network, no subprocesses. Never edits `/usr/share/omarchy/`.
+- No network, no subprocesses, no files written. Never edits `/usr/share/omarchy/`.
 
 ## Known limits
 
